@@ -29,7 +29,7 @@ const sessionConfig = {
 server.use(express.json());
 // server.use(helmet());
 server.use(session(sessionConfig));
-server.use("/api/users", usersRotuer); //CHANGE321
+server.use("/api", usersRotuer); //CHANGE321
 
 server.get("/", (req, res) => {
   res.status(200).json({ Victor_Frankenstein: "It LIVEEEESSSSSSS" });

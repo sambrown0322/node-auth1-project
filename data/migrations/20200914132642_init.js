@@ -3,6 +3,7 @@ exports.up = function (knex) {
     tbl.increments();
     tbl.string("username").notNullable().unique().index();
     tbl.string("password").notNullable();
+    tbl.string("department").notNullable();
   });
 };
 

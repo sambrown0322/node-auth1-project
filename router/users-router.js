@@ -1,11 +1,12 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const Users = require("./users-helper"); //CHANGE321
 
 const router = express.Router();
 
-router.get("/", protected, (req, res) => {
+router.get("/users", protected, (req, res) => {
   Users.find()
     .then((rez) => {
       res.status(200).json(rez);
@@ -40,8 +41,9 @@ router.post("/login", (req, res) => {
     Users.findBy({ username: creds.username })
       .then(([user]) => {
         if (user && bcrypt.compareSync(creds.password, user.password)) {
-          req.session.username = user.username;
-          res.status(200).json({ message: "Logged in" });
+          const token = makeJwt(user);
+          // req.session.username = user.username;
+          res.status(200).json({ token });
         } else {
           res.status(401).json({ message: "You shall not pass" });
         }
@@ -51,6 +53,20 @@ router.post("/login", (req, res) => {
       });
   } else {
     res.status(400).json({ message: "Invalid info" });
+  }
+});
+
+router.post("/logout", (req, res) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        res.status(500).json({ message: "You can't leave" });
+      } else {
+        res.status(204).end();
+      }
+    });
+  } else {
+    res.status(204).end();
   }
 });
 
@@ -65,11 +81,35 @@ function validateCredentials(creds) {
   return creds.username && creds.password ? true : false;
 }
 function protected(req, res, next) {
-  if (req.session.username) {
-    next();
+  const token = req.headers.authorization;
+  const secret = process.env.JWT_SECRET || "secret";
+
+  if (token) {
+    jwt.verify(token, secret, (err, decodedToken) => {
+      if (err) {
+        res.status(401).json({ message: "Not allowed" });
+      } else {
+        req.jwt = decodedToken;
+        next();
+      }
+    });
   } else {
-    res.status(401).json({ message: "You cannot pass" });
+    res.status(401).json({ message: "No token" });
   }
+}
+function makeJwt(user) {
+  const payload = {
+    username: user.username,
+    department: user.department,
+    subject: user.id,
+  };
+  const config = {
+    jwtSecret: process.env.JWT_SECRET || "secret",
+  };
+  const options = {
+    expiresIn: "8 hours",
+  };
+  return jwt.sign(payload, config.jwtSecret, options);
 }
 
 module.exports = router;
